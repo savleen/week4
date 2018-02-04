@@ -1,0 +1,70 @@
+library(dplyr)
+
+
+
+# getting the data
+zipUrl <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+zipFile <- "UCI HAR Dataset.zip"
+
+if (!file.exists(zipFile)) {
+  download.file(zipUrl, zipFile, mode = "wb")
+}
+
+
+dataPath <- "UCI HAR Dataset"
+if (!file.exists(dataPath)) {
+  unzip(zipFile)
+}
+
+
+trainSubjects <- read.table(file.path(dataPath, "train", "subject_train.txt"))
+trainValues <- read.table(file.path(dataPath, "train", "X_train.txt"))
+trainActivity <- read.table(file.path(dataPath, "train", "y_train.txt"))
+
+
+testSubjects <- read.table(file.path(dataPath, "test", "subject_test.txt"))
+testValues <- read.table(file.path(dataPath, "test", "X_test.txt"))
+testActivity <- read.table(file.path(dataPath, "test", "y_test.txt"))
+
+m1<- cbind(trainSubjects,trainValues, trainActivity)
+m2<- cbind(testSubjects,testValues,testActivity)
+
+#merging the data
+mergedData<- rbind(m1,m2)
+features <- read.table(file.path(dataPath, "features.txt"), as.is = TRUE)
+colnames(mergedData)<- c("subject", features[,2], "activity")
+
+#Keeping mean and std data 
+filterdata<- grepl("subject|mean|std|activity", colnames(mergedData))
+finaldata<- mergedData[,filterdata]
+
+# Descriptive Activity
+
+activities <- read.table(file.path(dataPath, "activity_labels.txt"))
+colnames(activities) <- c("activityId", "activityLabel")
+
+finaldata$activity<- factor(finaldata$activity, levels= activities[,1], labels= activities[,2])
+
+columns<- colnames(finaldata)
+
+columns2<- gsub("[\\(\\)-]", "", columns)
+
+
+columns2 <- gsub("^f", "frequencyDomain", columns2)
+columns2 <- gsub("^t", "timeDomain", columns2)
+columns2 <- gsub("Acc", "Accelerometer", columns2)
+columns2 <- gsub("Gyro", "Gyroscope", columns2)
+columns2 <- gsub("Mag", "Magnitude", columns2)
+columns2 <- gsub("Freq", "Frequency", columns2)
+columns2 <- gsub("mean", "Mean", columns2)
+columns2 <- gsub("std", "StandardDeviation", columns2)
+
+colnames(finaldata)<- columns2
+
+#final data set
+tidydata<- finaldata %>% 
+  group_by(subject, activity) %>%
+ summarise_all(funs (mean))
+                                                                              
+write.table(tidydata , "/Users/savleen/Desktop/tidy_data.txt", row.names = FALSE, quote = FALSE)
+                                                                                                                                                                  
